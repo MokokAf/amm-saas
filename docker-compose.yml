@@ -1,0 +1,123 @@
+version: "3.9"
+
+services:
+  # ────────────────────────────────
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    container_name: amm_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: amm
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (broker + cache)
+  redis:
+    image: redis:7-alpine
+    container_name: amm_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # MinIO (S3-compatible object storage)
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-05-27T05-56-19Z
+    container_name: amm_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console
+
+  # FastAPI backend
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: amm_backend
+    depends_on:
+      - db
+      - redis
+      - minio
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dev:devpass@db:5432/amm
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: files
+      JWT_SECRET: supersecretchange
+    volumes:
+      - ./apps/backend:/code
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Celery worker
+  worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: amm_worker
+    depends_on:
+      - backend
+      - redis
+      - db
+      - minio
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dev:devpass@db:5432/amm
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: files
+      JWT_SECRET: supersecretchange
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info"]
+
+  # Next.js frontend
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: amm_frontend
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./apps/frontend:/app
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "dev"]
+
+  # Traefik reverse-proxy (optional dev)
+  traefik:
+    image: traefik:v2.11
+    container_name: amm_traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "8080:80"   # web entry
+      - "8081:8080" # traefik dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+volumes:
+  db_data:
+  minio_data:
