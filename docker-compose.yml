@@ -31,7 +31,7 @@ services:
 
   # MinIO (S3-compatible object storage)
   minio:
-    image: quay.io/minio/minio:RELEASE.2024-05-27T05-56-19Z
+    image: minio/minio:latest
     container_name: amm_minio
     command: server /data --console-address ":9001"
     environment:
