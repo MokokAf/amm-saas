@@ -12,7 +12,6 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     String,
@@ -22,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SAEnum
+from enum import Enum as PyEnum
 
 from app.core.database import Base
 
@@ -91,7 +91,7 @@ class User(Base):
     role: Mapped["Role"] = relationship()
 
 
-class DossierStatusEnum(str, Enum):
+class DossierStatusEnum(str, PyEnum):
     draft = "draft"
     submitted = "submitted"
     approved = "approved"
