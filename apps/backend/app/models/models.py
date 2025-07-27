@@ -106,7 +106,11 @@ class Dossier(Base):
     reference: Mapped[str] = mapped_column(String(100))
     name_fr: Mapped[str] = mapped_column(String(255))
     name_ar: Mapped[str] = mapped_column(String(255))
-    status: Mapped[DossierStatusEnum] = mapped_column(SAEnum(DossierStatusEnum, name="dossier_status_enum"), default=DossierStatusEnum.draft)
+    status: Mapped[DossierStatusEnum] = mapped_column(SAEnum(
+        DossierStatusEnum,
+        name="dossier_status_enum",
+        values_callable=lambda enum_cls: [e.value for e in enum_cls],
+    ), default=DossierStatusEnum.draft)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
