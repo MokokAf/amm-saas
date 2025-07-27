@@ -12,4 +12,4 @@ boto3==1.34.113
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-dotenv
-pydantic-settings==1.0.1
+pydantic-settings==2.2.1
