@@ -8,7 +8,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal, engine
+from app.core.database import AsyncSessionLocal, engine, Base
 from app.models.models import Tenant, Role, User, Dossier, DossierStatusEnum
 from app.core.security import get_password_hash
 
@@ -17,7 +17,8 @@ async def seed():
     async with AsyncSessionLocal() as session:  # type: AsyncSession
         # Ensure tables exist (for local quick start)
         async with engine.begin() as conn:
-            await conn.run_sync(lambda conn_: None)  # no-op ensure connection
+            # Create all tables if they don't exist (dev/local)
+            await conn.run_sync(Base.metadata.create_all)
 
         # Check if already seeded
         res = await session.execute(select(Tenant).where(Tenant.name == "LabTest"))
