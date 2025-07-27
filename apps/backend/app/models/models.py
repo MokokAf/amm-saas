@@ -147,7 +147,12 @@ class File(Base):
     current_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("file_versions.id"))
 
     module: Mapped["Module"] = relationship(back_populates="files")
-    versions: Mapped[list["FileVersion"]] = relationship(back_populates="file", cascade="all, delete-orphan")
+    versions: Mapped[list["FileVersion"]] = relationship(
+        "FileVersion",
+        back_populates="file",
+        foreign_keys="[FileVersion.file_id]",
+        cascade="all, delete-orphan",
+    )
 
 
 class FileVersion(Base):
@@ -160,7 +165,11 @@ class FileVersion(Base):
     checksum: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
-    file: Mapped["File"] = relationship(back_populates="versions")
+    file: Mapped["File"] = relationship(
+        "File",
+        back_populates="versions",
+        foreign_keys="[FileVersion.file_id]",
+    )
 
 
 class ActionLog(Base):
